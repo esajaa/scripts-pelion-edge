@@ -177,6 +177,10 @@ main(){
     #Diff the two images
     cd $TMPDIR
     sudo rsync -rclkWpg --compare-dest=$TMPDIR/old/ new/ diff
+    #Remove files in blacklist
+    grep -v '^#' $CURRDIR/upgradeBlacklist.txt | while read f; do
+        rm -f "diff/$f" 2>/dev/null
+    done
     #Package diff
     packageDiff
     cd $CURRDIR
