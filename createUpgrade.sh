@@ -76,7 +76,7 @@ implode(){
     local partname=$2
     local curr=$(pwd)
     cd $dirname
-    tar -cJf $curr/$partname.tar.xz *
+    tar -cJf $curr/$partname.tar.xz .
     cd $curr
     md5sum $partname.tar.xz > $partname.tar.xz.md5
 }
