@@ -2,6 +2,11 @@
 
 # TODO: add settings section to group all the hardcoded paths and values
 
+# Output a message if verbose mode is on
+blab() {
+    [ "$VERBOSE" = 1 ] && echo "$@"
+}
+
 # Mount a partition inside a .wic file (or any image file flashable with dd)
 # Params:
 #    1 - .wic file name (with path if needed)
@@ -56,6 +61,7 @@ mount_wic_partition() {
     }
 
     mkdir -p "${mount_point}"
+    blab Mounting wic partition "$partition_number" of "$wic_file" to "$mount_point"
     sudo mount -o loop,ro,offset=$((512*${start_sector})),sizelimit=$((512*${sector_count})) -t ${partition_type} "${wic_file}" "${mount_point}"
 }
 
@@ -63,6 +69,7 @@ mount_wic_partition() {
 # Params:
 #    1 - mount point (or /dev name)
 umount_wic_partition() {
+    blab Umounting "$1"
     sudo umount "$1"
 }
 
@@ -108,12 +115,15 @@ diff_partition() {
     local workdir="${4:-${TMPDIR:-$(pwd)}}"
     local tarname="$(tarball_name $partition)"
 
+    blab "===> Diffing partition $partition"
+
     mount_wic_partition "$wic_old" "$partition" "$workdir/old" || return 1
     mount_wic_partition "$wic_new" "$partition" "$workdir/new" || {
         umount_wic_partition "$workdir/old"
         return 2
     }
 
+    blab Running rsync
     # TODO: this does not handle removed files (i.e. old files that aren't supposed to be there anymore will not be marked in any way)
     sudo rsync -rclkWpg "--compare-dest=$workdir/old/" "$workdir/new/" "$workdir/diff"
 
@@ -124,14 +134,16 @@ diff_partition() {
     umount_wic_partition "$workdir/old"
     umount_wic_partition "$workdir/new"
 
+    blab Processing blacklist
     # Remove files in blacklist if there is one
     [ -f upgradeBlacklist.txt ] && grep -v '^#\|^$' upgradeBlacklist.txt | while read f; do
         # TODO: add safety check to prevent the blacklist from accidentally escaping workdir
         rm -f "$workdir/diff/$f" 2>/dev/null
     done
 
+    blab Packing diff into "$workdir/pack/$tarname.tar.xz"
     # TODO: Why are we using both .gz and .xz? Settle for one of them (hint: .xz is suboptimal for tight embedded systems, because it requires large amounts of RAM)
-    tar -cJf "$workdir/pack/$tarname.tar.xz" -C "$workdir/diff" .
+    tar -cJ${TARVFLAG}f "$workdir/pack/$tarname.tar.xz" -C "$workdir/diff" .
     md5sum "$workdir/pack/$tarname.tar.xz" > "$workdir/pack/$tarname.tar.xz.md5"
 
     rm -rf "$workdir/old" "$workdir/new" "$workdir/diff"
@@ -146,11 +158,14 @@ packageDiff() {
     local workdir="${1:-${TMPDIR:-$(pwd)}}"
     local tag="$2"
 
-    tar -czf "$workdir/field/upgrade.tar.gz" -C "$workdir/pack" .
+    blab "===> Packing everything up"
+    blab "Creating $workdir/field/upgrade.tar.gz"
+    tar -cz${TARVFLAG}f "$workdir/field/upgrade.tar.gz" -C "$workdir/pack" .
     outtar="field-upgradeupdate.tar.gz"
     [ -n "${tag}" ] && outtar="${tag}-${outtar}"
     md5sum "$workdir/field/upgrade.tar.gz" > "$workdir/field/upgrade.tar.gz.md5"
-    tar -czf "$outtar" -C "$workdir/field" .
+    blab "Creating $(pwd)/$outtar"
+    tar -cz${TARVFLAG}f "$outtar" -C "$workdir/field" .
     echo "Field upgrade output to $outtar"
 }
 
@@ -159,6 +174,7 @@ packageDiff() {
 setupTemp() {
     # TODO: make TMPDIR a parameter, not a global variable
     TMPDIR=$(mktemp -d)
+    blab "===> Setting up workdir in $TMPDIR"
     mkdir -p $TMPDIR/pack
     mkdir -p $TMPDIR/field
     touch $TMPDIR/field/upgradeversions.json
@@ -172,6 +188,7 @@ setupTemp() {
 #    1 - [optional] temporary directory for packing/unpacking files [default: TMPDIR; for safety reasons, there is no fallback]
 cleanup() {
     local workdir="${1:-${TMPDIR}}"
+    blab "===> Cleaning up $workdir"
     # TODO: to avoid clobbering existing files if workdir was not a fresh directory: instead of rm -rf workdir, remove only pack/ and field/, then use rmdir
     [ -n "$workdir" ] && rm -rf "$workdir"
 }
@@ -225,4 +242,5 @@ main() {
     cleanup
 }
 
+[ "$1" = "--verbose" ] && VERBOSE=1 && TARVFLAG=v && shift
 main "$@"
