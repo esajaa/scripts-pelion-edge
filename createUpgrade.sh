@@ -156,31 +156,44 @@ diff_partition() {
 # Assumptions: workdir/pack exists and is the location of individual partition diffs (tarball+md5 each)
 packageDiff() {
     local workdir="${1:-${TMPDIR:-$(pwd)}}"
-    local tag="$2"
+    local signKey="$2"
+    local tag="$3"
 
     blab "===> Packing everything up"
     blab "Creating $workdir/field/upgrade.tar.gz"
     tar -cz${TARVFLAG}f "$workdir/field/upgrade.tar.gz" -C "$workdir/pack" .
+    md5sum "$workdir/field/upgrade.tar.gz" > "$workdir/config/upgrade.tar.gz.md5"
+    blab "Creating $workdir/field/upgrade-config.tar.gz"
+    tar -cz${TARVFLAG}f "$workdir/field/upgrade-config.tar.gz" -C "$workdir/config" .
+    blab "Signing upgrade tarballs"
+    openssl dgst -sha256 -sign "${signKey}" -out "$workdir/field/upgrade.tar.gz.sig" "$workdir/field/upgrade.tar.gz" 
+    openssl dgst -sha256 -sign "${signKey}" -out "$workdir/field/upgrade-config.tar.gz.sig" "$workdir/field/upgrade-config.tar.gz" 
+
     outtar="field-upgradeupdate.tar.gz"
     [ -n "${tag}" ] && outtar="${tag}-${outtar}"
-    md5sum "$workdir/field/upgrade.tar.gz" > "$workdir/field/upgrade.tar.gz.md5"
     blab "Creating $(pwd)/$outtar"
     tar -cz${TARVFLAG}f "$outtar" -C "$workdir/field" .
     echo "Field upgrade output to $outtar"
 }
 
 # Setup temporary working space
+# Params:
+#    1 - signCert: certificate file staged here for later packaging
 #
 setupTemp() {
     # TODO: make TMPDIR a parameter, not a global variable
     TMPDIR=$(mktemp -d)
+    local signCert="$1"
+
     blab "===> Setting up workdir in $TMPDIR"
     mkdir -p $TMPDIR/pack
     mkdir -p $TMPDIR/field
-    touch $TMPDIR/field/upgradeversions.json
-    cp upgrade-scripts/upgrade.sh $TMPDIR/field
-    cp upgrade-scripts/install.sh $TMPDIR/field
-    cp upgrade-scripts/post-install.sh $TMPDIR/field
+    mkdir -p $TMPDIR/config
+    touch $TMPDIR/config/upgradeversions.json
+    cp upgrade-scripts/upgrade.sh $TMPDIR/config
+    cp upgrade-scripts/install.sh $TMPDIR/config
+    cp upgrade-scripts/post-install.sh $TMPDIR/config
+    cp "$signCert" $TMPDIR/field
 }
 
 # Unmount partitions and remove temp files
@@ -197,15 +210,19 @@ cleanup() {
 # Takes two input wic files and produces a tarball of their difference that can
 # be used in the field upgrade process
 # Params:
-#     1 - oldwic: .wic file of the base or factory build to be upgraded
-#     2 - newwic: .wic file of the new or upgrade build
-#     3 - tag:    optional text tag to be prepended to the output tarball
+#     1 - oldwic:      .wic file of the base or factory build to be upgraded
+#     2 - newwic:      .wic file of the new or upgrade build
+#     3 - upgradeCert: certificate to be packaged with the upgrade and used to validate signatures
+#     4 - upgradeKey:  private key corresponding to upgradeCert used by this script to genrate signatures
+#     5 - tag:         optional text tag to be prepended to the output tarball
 # Output:
 #     <tag>-field-upgradeupdate.tar.gz
 main() {
     local oldwic="$1"
     local newwic="$2"
-    local tag="$3"
+    local upgradeCert="$3"
+    local upgradeKey="$4"
+    local tag="$5"
 
     # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
     # TODO: Add the ability to handle .wic.gz files?
@@ -216,8 +233,14 @@ main() {
         return 2
     }
 
-    [ -f "${oldwic}" ] && [ -f "${newwic}" ] || {
-        echo >&2 "Usage: sudo createUpgrade.sh <old_wic_file> <new_wic_file> [upgrade_tag]"
+    [ -f "${oldwic}" ] && [ -f "${newwic}" ] && [ -f "${upgradeCert}" ] && [ -f "${upgradeKey}" ] || {
+        echo >&2 "Usage: sudo createUpgrade.sh <old_wic_file> <new_wic_file> <upgrade_certificate> <upgrade_key> [upgrade_tag]"
+	echo >&2 "    old_wic_file        - base image for upgrade"
+	echo >&2 "    new_wic_file        - result image for upgrade"
+	echo >&2 "    upgrade_certificate - certificate packaged with upgrade used to verify signatures"
+	echo >&2 "    upgrade_key         - private key for upgrade_certificate used to generate signatures"
+	echo >&2 "    upgrade_tag         - optional text string prepended to output tarball filename"
+
         return 2
     }
 
@@ -227,8 +250,14 @@ main() {
         return 2
     }
 
+    # Ensure openssl is installed for signing
+    type openssl 2>/dev/null || {
+        echo >&2 "Openssl (bin) must be installed in order to sign upgrade."
+	return 2
+    }
+
     # Create tmp working space
-    setupTemp
+    setupTemp "$upgradeCert"
 
     # Diff each partition - not all at the same time, to minimize usage of the loopback devices
     for p in 1 2 5 6; do
@@ -236,7 +265,7 @@ main() {
     done
 
     # Package diffs
-    packageDiff "$TMPDIR" "$tag"
+    packageDiff "$TMPDIR" "$upgradeKey" "$tag"
 
     # Cleanup the temp working space
     cleanup
