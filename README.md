@@ -19,3 +19,5 @@ Notes:
 
 Unpack the field upgrade tarball (usually called `field-upgradeupdate.tar.gz`) into the user partition, under `/slash/upgrades`, then reboot the device.
 The upgrade process will start upon detecting the required files.
+
+Note that by default, the user partition is erased during the upgrade. This includes saved settings such as the root password. To disable this behavior, please change the value of `WIPETHEUSER_PARTITION` to `0` in `upgrade.sh` (contained in the field upgrade tarball).
