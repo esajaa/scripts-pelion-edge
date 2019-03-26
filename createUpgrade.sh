@@ -259,9 +259,14 @@ main() {
     # Create tmp working space
     setupTemp "$upgradeCert"
 
+    # If input wic files are gzipped, gunzip them otherwise copy them as is
+    gzcat -f "$oldwic" > ${TMPDIR}/old_wic
+    gzcat -f "$newwic" > ${TMPDIR}/new_wic
+
+
     # Diff each partition - not all at the same time, to minimize usage of the loopback devices
     for p in 1 2 5 6; do
-        diff_partition "$oldwic" "$newwic" $p
+        diff_partition ${TMPDIR}/old_wic ${TMPDIR}/new_wic $p
     done
 
     # Package diffs
