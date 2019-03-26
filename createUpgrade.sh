@@ -208,7 +208,6 @@ main() {
     local tag="$3"
 
     # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
-    # TODO: Add the ability to handle .wic.gz files?
 
     # Ensure we are running as root
     [ $(id -u) -ne 0 ] && { 
@@ -230,9 +229,14 @@ main() {
     # Create tmp working space
     setupTemp
 
+    # If input wic files are gzipped, gunzip them otherwise copy them as is
+    gzcat -f "$oldwic" > ${TMPDIR}/old_wic
+    gzcat -f "$newwic" > ${TMPDIR}/new_wic
+
+
     # Diff each partition - not all at the same time, to minimize usage of the loopback devices
     for p in 1 2 5 6; do
-        diff_partition "$oldwic" "$newwic" $p
+        diff_partition ${TMPDIR}/old_wic ${TMPDIR}/new_wic $p
     done
 
     # Package diffs
