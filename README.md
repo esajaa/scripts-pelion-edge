@@ -6,8 +6,14 @@ Build scripts and tools for the pelion-os-edge firmware images
 The createUpgrade.sh script can be used to create a field upgrade tarball.
 
 ```
-> sudo createupGrade.sh <old-wic> <new-wic> [upgrade-tag]
+> sudo createupGrade.sh <old-wic> <new-wic> <upgrade_certificate> <upgrade_key> [upgrade-tag]
 ```
+old_wic_file        - base image for upgrade
+new_wic_file        - result image for upgrade
+upgrade_certificate - certificate packaged with upgrade used to verify signatures
+upgrade_key         - private key for upgrade_certificate used to generate signatures
+upgrade_tag         - optional text string prepended to output tarball filename
+
 
 Notes:
   1. createUpgrade must be run as root as it calls functions such as mount and rsync which require root access
