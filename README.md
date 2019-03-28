@@ -1,5 +1,5 @@
 # scripts-gateway-ww
-Build scripts and tools for the gateway-ww firmware images
+Build scripts and tools for the Pelion gateway firmware images
 
 # creating an upgrade tarball
 
@@ -23,7 +23,7 @@ Notes:
 
 # starting the upgrade process manually
 
-Unpack the field upgrade tarball (usually called `field-upgradeupdate.tar.gz`) into the user partition, under `/upgrades`. (If you unpack the tarball on a Raspberry Pi running the WW image, the full path will be `/mnt/.overlay/user/slash/upgrades`; alternatively, you can mount the SDcard directly on your host under a path of your choice, for faster copying.)
+Unpack the field upgrade tarball (usually called `field-upgradeupdate.tar.gz`) into the user partition, under `/upgrades`. (If you unpack the tarball on a Raspberry Pi running the Pelion gateway, the full path will be `/mnt/.overlay/user/slash/upgrades`; alternatively, you can mount the SDcard directly on your host under a path of your choice, for faster copying.)
 Reboot the device after the unpacking is completed. The upgrade process will start upon detecting the required files.
 
 Note that by default, the user partition is erased during the upgrade. This includes saved settings such as the root password. To disable this behavior, please change the value of `WIPETHEUSER_PARTITION` to `0` in `upgrade.sh` (contained in this repo in the `upgrade-scripts` directory) before running `createUpgrade.sh`.
