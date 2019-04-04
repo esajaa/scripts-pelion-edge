@@ -193,7 +193,7 @@ setupTemp() {
     cp upgrade-scripts/upgrade.sh $TMPDIR/config
     cp upgrade-scripts/install.sh $TMPDIR/config
     cp upgrade-scripts/post-install.sh $TMPDIR/config
-    cp "$signCert" $TMPDIR/field
+    cp "$signCert" $TMPDIR/field/upgrade.cert
 }
 
 # Unmount partitions and remove temp files
