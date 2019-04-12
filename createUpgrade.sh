@@ -245,7 +245,7 @@ main() {
     }
 
     [ -f upgrade-scripts/upgrade.sh ] || {
-        echo >&2 "Please run within a checkout of scripts-gateway-ww repo."
+        echo >&2 "Please run within a checkout of scripts-pelion-os-edge repo."
         echo >&2 "./upgrade-scripts/upgrade.sh needs to exist in the current directory"
         return 2
     }
