@@ -1,5 +1,5 @@
-# scripts-gateway-ww
-Build scripts and tools for the gateway-ww firmware images
+# scripts-pelion-os-edge
+Build scripts and tools for the pelion-os-edge firmware images
 
 # creating an upgrade tarball
 
