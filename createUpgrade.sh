@@ -234,13 +234,12 @@ main() {
     }
 
     [ -f "${oldwic}" ] && [ -f "${newwic}" ] && [ -f "${upgradeCert}" ] && [ -f "${upgradeKey}" ] || {
-        echo >&2 "Usage: sudo createUpgrade.sh <old_wic_file> <new_wic_file> <upgrade_certificate> <upgrade_key> [upgrade_tag]"
+        echo >&2 "Usage: sudo createUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> <upgrade_certificate> <upgrade_key> [upgrade_tag]"
 	echo >&2 "    old_wic_file        - base image for upgrade"
 	echo >&2 "    new_wic_file        - result image for upgrade"
 	echo >&2 "    upgrade_certificate - certificate packaged with upgrade used to verify signatures"
 	echo >&2 "    upgrade_key         - private key for upgrade_certificate used to generate signatures"
 	echo >&2 "    upgrade_tag         - optional text string prepended to output tarball filename"
-
         return 2
     }
 
