@@ -216,7 +216,7 @@ main() {
     }
 
     [ -f "${oldwic}" ] && [ -f "${newwic}" ] || {
-        echo >&2 "Usage: sudo createUpgrade.sh <old_wic_file> <new_wic_file> [upgrade_tag]"
+        echo >&2 "Usage: sudo createUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> [upgrade_tag]"
         return 2
     }
 
