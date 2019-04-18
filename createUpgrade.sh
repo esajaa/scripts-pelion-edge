@@ -7,6 +7,20 @@ blab() {
     [ "$VERBOSE" = 1 ] && echo "$@"
 }
 
+# Verify that given binaries are available
+# Params: list of binaries, separated by space
+# Returns the number of missing binaries (0=success)
+require_binaries() {
+    local retval=0
+    for b in "$@"; do
+        type "$b" >/dev/null 2>&1 || {
+            echo >&2 "Please make sure binary $b is installed and available in the path."
+	    let retval++
+        }
+    done
+    return $retval
+}
+
 # Mount a partition inside a .wic file (or any image file flashable with dd)
 # Params:
 #    1 - .wic file name (with path if needed)
@@ -206,24 +220,28 @@ main() {
     local oldwic="$1"
     local newwic="$2"
     local tag="$3"
-
-    # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
-
-    # Ensure we are running as root
-    [ $(id -u) -ne 0 ] && { 
-        echo >&2 "Please run as root"
-        return 2
-    }
+    local success=1
 
     [ -f "${oldwic}" ] && [ -f "${newwic}" ] || {
         echo >&2 "Usage: sudo createUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> [upgrade_tag]"
-        return 2
+        return 1
     }
+
+    # Make sure we have all the binaries we need; gzcat can be substituted
+    type gzcat >/dev/null 2>&1 || gzcat() { gzip -c -d -f "$@"; }
+    require_binaries gzip gzcat xz tar md5sum grep rsync mount umount fdisk sfdisk || return 2
 
     [ -f upgrade-scripts/upgrade.sh ] || {
         echo >&2 "Please run within a checkout of scripts-pelion-os-edge repo."
         echo >&2 "./upgrade-scripts/upgrade.sh needs to exist in the current directory"
         return 2
+    }
+
+    # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
+    # Ensure we are running as root
+    [ $(id -u) -ne 0 ] && {
+        echo >&2 "Please run as root"
+        return 3
     }
 
     # Create tmp working space
@@ -236,11 +254,14 @@ main() {
 
     # Diff each partition - not all at the same time, to minimize usage of the loopback devices
     for p in 1 2 5 6; do
-        diff_partition ${TMPDIR}/old_wic ${TMPDIR}/new_wic $p
+        diff_partition ${TMPDIR}/old_wic ${TMPDIR}/new_wic $p || {
+            success=0
+            break
+        }
     done
 
     # Package diffs
-    packageDiff "$TMPDIR" "$tag"
+    [ $success -eq 1 ] && packageDiff "$TMPDIR" "$tag"
 
     # Cleanup the temp working space
     cleanup
