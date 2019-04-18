@@ -7,6 +7,20 @@ blab() {
     [ "$VERBOSE" = 1 ] && echo "$@"
 }
 
+# Verify that given binaries are available
+# Params: list of binaries, separated by space
+# Returns the number of missing binaries (0=success)
+require_binaries() {
+    local retval=0
+    for b in "$@"; do
+        type "$b" >/dev/null 2>&1 || {
+            echo >&2 "Please make sure binary $b is installed and available in the path."
+	    let retval++
+        }
+    done
+    return $retval
+}
+
 # Mount a partition inside a .wic file (or any image file flashable with dd)
 # Params:
 #    1 - .wic file name (with path if needed)
@@ -223,14 +237,7 @@ main() {
     local upgradeCert="$3"
     local upgradeKey="$4"
     local tag="$5"
-
-    # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
-
-    # Ensure we are running as root
-    [ $(id -u) -ne 0 ] && { 
-        echo >&2 "Please run as root"
-        return 2
-    }
+    local success=1
 
     [ -f "${oldwic}" ] && [ -f "${newwic}" ] && [ -f "${upgradeCert}" ] && [ -f "${upgradeKey}" ] || {
         echo >&2 "Usage: sudo createUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> <upgrade_certificate> <upgrade_key> [upgrade_tag]"
@@ -239,8 +246,12 @@ main() {
 	echo >&2 "    upgrade_certificate - certificate packaged with upgrade used to verify signatures"
 	echo >&2 "    upgrade_key         - private key for upgrade_certificate used to generate signatures"
 	echo >&2 "    upgrade_tag         - optional text string prepended to output tarball filename"
-        return 2
+        return 1
     }
+
+    # Make sure we have all the binaries we need; gzcat can be substituted
+    type gzcat >/dev/null 2>&1 || gzcat() { gzip -c -d -f "$@"; }
+    require_binaries gzip gzcat xz tar openssl md5sum grep rsync mount umount fdisk sfdisk || return 2
 
     [ -f upgrade-scripts/upgrade.sh ] || {
         echo >&2 "Please run within a checkout of scripts-pelion-os-edge repo."
@@ -248,10 +259,11 @@ main() {
         return 2
     }
 
-    # Ensure openssl is installed for signing
-    type openssl 2>/dev/null || {
-        echo >&2 "Openssl (bin) must be installed in order to sign upgrade."
-	return 2
+    # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
+    # Ensure we are running as root
+    [ $(id -u) -ne 0 ] && {
+        echo >&2 "Please run as root"
+        return 3
     }
 
     # Create tmp working space
@@ -263,11 +275,14 @@ main() {
 
     # Diff each partition - not all at the same time, to minimize usage of the loopback devices
     for p in 1 2 5 6; do
-        diff_partition ${TMPDIR}/old_wic ${TMPDIR}/new_wic $p
+        diff_partition ${TMPDIR}/old_wic ${TMPDIR}/new_wic $p || {
+            success=0
+            break
+        }
     done
 
     # Package diffs
-    packageDiff "$TMPDIR" "$upgradeKey" "$tag"
+    [ $success -eq 1 ] && packageDiff "$TMPDIR" "$upgradeKey" "$tag"
 
     # Cleanup the temp working space
     cleanup
