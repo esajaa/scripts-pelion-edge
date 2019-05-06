@@ -148,6 +148,18 @@ diff_partition() {
     umount_wic_partition "$workdir/old"
     umount_wic_partition "$workdir/new"
 
+    [ $partition -eq 1 ] && {
+        # The fancy new (secure) u-boot gets written directly to offset 1M (after the partition table)
+        # instead of being a regular file in the boot partition. The magic max length of 1920k was
+        # passed on as tribal knowledge; as far as the .wks config goes, the available space is 3M.
+        # If the new u-boot is different, we'll store it in the boot upgrade tarball as fip2.bin
+        blab Checking secure u-boot
+        dd "if=$wic_old" "of=$workdir/diff/fip2.old" bs=1024 skip=1024 count=1920
+        dd "if=$wic_new" "of=$workdir/diff/fip2.bin" bs=1024 skip=1024 count=1920
+        diff -q "$workdir/diff/fip2.old" "$workdir/diff/fip2.bin" >/dev/null && rm -f "$workdir/diff/fip2.bin"
+        rm -f "$workdir/diff/fip2.old"
+    }
+
     blab Processing blacklist
     # Remove files in blacklist if there is one
     [ -f upgradeBlacklist.txt ] && grep -v '^#\|^$' upgradeBlacklist.txt | while read f; do
