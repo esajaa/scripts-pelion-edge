@@ -150,8 +150,11 @@ diff_partition() {
 
     [ $partition -eq 1 ] && {
         # The fancy new (secure) u-boot gets written directly to offset 1M (after the partition table)
-        # instead of being a regular file in the boot partition. The magic max length of 1920k was
-        # passed on as tribal knowledge; as far as the .wks config goes, the available space is 3M.
+        # instead of being a regular file in the boot partition. The length of 1920*1024 is the max
+        # size of the fip2.bin:
+        # https://github.com/ARM-software/arm-trusted-firmware/blob/master/plat/rpi3/include/platform_def.h
+        #   define PLAT_RPI3_FIP_MAX_SIZE ULL(0x001E0000)
+        # As far as the .wks config goes, the available space is 3M.
         # If the new u-boot is different, we'll store it in the boot upgrade tarball as fip2.bin
         blab Checking secure u-boot
         dd "if=$wic_old" "of=$workdir/diff/fip2.old" bs=1024 skip=1024 count=1920
