@@ -1,3 +1,4 @@
 # files listed here will be excluded from automatic upgrade diffs
 # format: full path, no wildcards, one file per line
 /etc/shadow
+/lost+found
