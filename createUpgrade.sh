@@ -167,7 +167,7 @@ diff_partition() {
     # Remove files in blacklist if there is one
     [ -f upgradeBlacklist.txt ] && grep -v '^#\|^$' upgradeBlacklist.txt | while read f; do
         # TODO: add safety check to prevent the blacklist from accidentally escaping workdir
-        rm -f "$workdir/diff/$f" 2>/dev/null
+        rm -rf "$workdir/diff/$f" 2>/dev/null
     done
 
     blab Packing diff into "$workdir/pack/$tarname.tar.xz"
