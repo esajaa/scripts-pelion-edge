@@ -148,21 +148,6 @@ diff_partition() {
     umount_wic_partition "$workdir/old"
     umount_wic_partition "$workdir/new"
 
-    [ $partition -eq 1 ] && {
-        # The fancy new (secure) u-boot gets written directly to offset 1M (after the partition table)
-        # instead of being a regular file in the boot partition. The length of 1920*1024 is the max
-        # size of the fip2.bin:
-        # https://github.com/ARM-software/arm-trusted-firmware/blob/master/plat/rpi3/include/platform_def.h
-        #   define PLAT_RPI3_FIP_MAX_SIZE ULL(0x001E0000)
-        # As far as the .wks config goes, the available space is 3M.
-        # If the new u-boot is different, we'll store it in the boot upgrade tarball as fip2.bin
-        blab Checking secure u-boot
-        dd "if=$wic_old" "of=$workdir/diff/fip2.old" bs=1024 skip=1024 count=1920
-        dd "if=$wic_new" "of=$workdir/diff/fip2.bin" bs=1024 skip=1024 count=1920
-        diff -q "$workdir/diff/fip2.old" "$workdir/diff/fip2.bin" >/dev/null && rm -f "$workdir/diff/fip2.bin"
-        rm -f "$workdir/diff/fip2.old"
-    }
-
     blab Processing blacklist
     # Remove files in blacklist if there is one
     [ -f upgradeBlacklist.txt ] && grep -v '^#\|^$' upgradeBlacklist.txt | while read f; do
@@ -185,44 +170,31 @@ diff_partition() {
 # Assumptions: workdir/pack exists and is the location of individual partition diffs (tarball+md5 each)
 packageDiff() {
     local workdir="${1:-${TMPDIR:-$(pwd)}}"
-    local signKey="$2"
-    local tag="$3"
+    local tag="$2"
 
     blab "===> Packing everything up"
     blab "Creating $workdir/field/upgrade.tar.gz"
     tar -cz${TARVFLAG}f "$workdir/field/upgrade.tar.gz" -C "$workdir/pack" .
-    md5sum "$workdir/field/upgrade.tar.gz" > "$workdir/config/upgrade.tar.gz.md5"
-    blab "Creating $workdir/field/upgrade-config.tar.gz"
-    tar -cz${TARVFLAG}f "$workdir/field/upgrade-config.tar.gz" -C "$workdir/config" .
-    blab "Signing upgrade tarballs"
-    openssl dgst -sha256 -sign "${signKey}" -out "$workdir/field/upgrade.tar.gz.sig" "$workdir/field/upgrade.tar.gz" 
-    openssl dgst -sha256 -sign "${signKey}" -out "$workdir/field/upgrade-config.tar.gz.sig" "$workdir/field/upgrade-config.tar.gz" 
-
     outtar="field-upgradeupdate.tar.gz"
     [ -n "${tag}" ] && outtar="${tag}-${outtar}"
+    md5sum "$workdir/field/upgrade.tar.gz" > "$workdir/field/upgrade.tar.gz.md5"
     blab "Creating $(pwd)/$outtar"
     tar -cz${TARVFLAG}f "$outtar" -C "$workdir/field" .
     echo "Field upgrade output to $outtar"
 }
 
 # Setup temporary working space
-# Params:
-#    1 - signCert: certificate file staged here for later packaging
 #
 setupTemp() {
     # TODO: make TMPDIR a parameter, not a global variable
     TMPDIR=$(mktemp -d)
-    local signCert="$1"
-
     blab "===> Setting up workdir in $TMPDIR"
     mkdir -p $TMPDIR/pack
     mkdir -p $TMPDIR/field
-    mkdir -p $TMPDIR/config
-    touch $TMPDIR/config/upgradeversions.json
-    cp upgrade-scripts/upgrade.sh $TMPDIR/config
-    cp upgrade-scripts/install.sh $TMPDIR/config
-    cp upgrade-scripts/post-install.sh $TMPDIR/config
-    cp "$signCert" $TMPDIR/field/upgrade.cert
+    touch $TMPDIR/field/upgradeversions.json
+    cp upgrade-scripts/upgrade.sh $TMPDIR/field
+    cp upgrade-scripts/install.sh $TMPDIR/field
+    cp upgrade-scripts/post-install.sh $TMPDIR/field
 }
 
 # Unmount partitions and remove temp files
@@ -239,27 +211,21 @@ cleanup() {
 # Takes two input wic files and produces a tarball of their difference that can
 # be used in the field upgrade process
 # Params:
-#     1 - oldwic:      .wic file of the base or factory build to be upgraded
-#     2 - newwic:      .wic file of the new or upgrade build
-#     3 - upgradeCert: certificate to be packaged with the upgrade and used to validate signatures
-#     4 - upgradeKey:  private key corresponding to upgradeCert used by this script to genrate signatures
-#     5 - tag:         optional text tag to be prepended to the output tarball
+#     1 - oldwic: .wic file of the base or factory build to be upgraded
+#     2 - newwic: .wic file of the new or upgrade build
+#     3 - tag:    optional text tag to be prepended to the output tarball
 # Output:
 #     <tag>-field-upgradeupdate.tar.gz
 main() {
     local oldwic="$1"
     local newwic="$2"
-    local upgradeCert="$3"
-    local upgradeKey="$4"
-    local tag="$5"
+    local tag="$3"
     local success=1
 
-    [ -f "${oldwic}" ] && [ -f "${newwic}" ] && [ -f "${upgradeCert}" ] && [ -f "${upgradeKey}" ] || {
-        echo >&2 "Usage: sudo createUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> <upgrade_certificate> <upgrade_key> [upgrade_tag]"
+    [ -f "${oldwic}" ] && [ -f "${newwic}" ] || {
+        echo >&2 "Usage: sudo createUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> [upgrade_tag]"
 	echo >&2 "    old_wic_file        - base image for upgrade"
 	echo >&2 "    new_wic_file        - result image for upgrade"
-	echo >&2 "    upgrade_certificate - certificate packaged with upgrade used to verify signatures"
-	echo >&2 "    upgrade_key         - private key for upgrade_certificate used to generate signatures"
 	echo >&2 "    upgrade_tag         - optional text string prepended to output tarball filename"
         return 1
     }
@@ -282,7 +248,7 @@ main() {
     }
 
     # Create tmp working space
-    setupTemp "$upgradeCert"
+    setupTemp
 
     # If input wic files are gzipped, gunzip them otherwise copy them as is
     gzcat -f "$oldwic" > ${TMPDIR}/old_wic
@@ -297,7 +263,7 @@ main() {
     done
 
     # Package diffs
-    [ $success -eq 1 ] && packageDiff "$TMPDIR" "$upgradeKey" "$tag"
+    [ $success -eq 1 ] && packageDiff "$TMPDIR" "$tag"
 
     # Cleanup the temp working space
     cleanup

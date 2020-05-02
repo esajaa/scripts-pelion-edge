@@ -2,126 +2,174 @@
 # Wipes the User partition
 # Wipes the Upgrade partition
 # upgrades the factory partition
-# VERSION 2 (MARCH 2017)
+# VERSION 2 (January 2017)
 
-#todo
-#validate that it doesn't backwards upgrade the factory
-
-
-#These are the defaults that are set in the int script anways.  To overide them, you can set them to something different
-
-#wipes the factory partition (only use this in specail cases. 
-# if we are upgrading the factory partition, it is automatically wiped),
-#  if you specify this, and nothing else, you will brick your relay.
-WIPETHEFACTORY=0
-#upgrades the factory only if the factory differs in version number from the current factory partition. 
-#We always wipe the factory clean and never copy over during an upgrade
-UPGRADETHEFACTORYWHENNEWER=1
-#upgrades the factory regardless of what is currently on the factory partition. 
+#upgrades the factory only if the factory differs in version number from the current factory partition
+UPGRADETHEFACTORY=1
+#upgrades the factory regardless of what is currently on the factory partition.  ALSO SET the regular upgrade if you want it to work
 FORCEUPGRADETHEFACTORY=0
-#repartition the emmc to the new parition table (only during a factory upgrade, and only if its needed)
-REPARTITIONEMMC=1
-#Example:
-#	UPGRADETHEFACTORY=0
-#	FORCEUPGRADETHEFACTORY=0
-#	REPARTITIONEMMC=1
-#	Resut, nothing happens
-#Example:
-#	UPGRADETHEFACTORY=1
-#	FORCEUPGRADETHEFACTORY=0
-#	REPARTITIONEMMC=1
-#	Resut, The drive will be repartitioned (if and only if) the desired partition size does not match the 
-#	current partiion size, and only if the Upgrade is deemed necessary by having a newer factory avaiable than
-#  	what is currnetly installed
-#Example:
-#	UPGRADETHEFACTORY=0
-#	FORCEUPGRADETHEFACTORY=1
-#	REPARTITIONEMMC=1
-#	Resut, The drive will be repartitioned (if and only if) the desired partition size does not match the 
-#	current partiion size, A new factory image is forced installed even
-#wipes the upgrade partition (only use this in specail cases.  
-#if we are upgrading the upgrade partition, it is automatically wiped)
-#if you specifiy this, and nothing else, you will brick your relay
-WIPETHEUPGRADE=0
 #upgrades the upgrade only if the upgrade differs in version number for the current upgrade partition
-#we alaways wipe the upgrade partition before installing.  never copy over. 
-UPGRADETHEUPGRADEWHENNEWER=1
+UPGRADETHEUPGRADE=1
 #upgrades the upgrade regarless of what is currently on the upgrade parition
 FORCEUPGRADETHEUPGRADE=0
 #wipes the user partition clean
-#Note we don't "automatically" wipe the user, userdata, or boot partitions as those parititons hold userdata"
-#if you want them wiped in the upgrade, you must call the following
-WIPETHEUSER_PARTITION=0
-#upgrades the user partition with user.tar.xz.  (an unforseen preventive condition)
-#strategy is copyover unless WIPETHEUSER_PARTITION is set.
-UPGRADETHEUSER_PARTITIONWHENNEWER=0
-#forces the upgrade of the user partition. 
-FORCEUPGRADETHEUSER_PARTITION=0
-#wipes the userdata partition clean
-#Note we don't "automatically" wipe the user, userdata, or boot partitions as those parititons hold userdata"
-#if you want them wiped in the upgrade, you must call the following
-WIPETHEUSERDATA=0
-#upgrades the user partition with userdata.tar.xx.  (an unforseen preventive condition)
-#strategy is copyover unless WIPETHEUSERDATA is set.
-UPGRADETHEUSERDATAWHENNEWER=0
-#forces the upgrade of the user partition. 
-FORCEUPGRADETHEUSERDATA=0
-#wipes the boot partition clean
-#Note we don't "automatically" wipe the user, userdata, or boot partitions as those parititons hold userdata"
-#if you want them wiped in the upgrade, you must call the following
-WIPETHEBOOT=0
-#upgrades the user partition with boot.tar.xz.  (an unforseen preventive condition)
-#strategy is copyover unless WIPETHEBOOT is set.
-UPGRADETHEBOOTWHENNEWER=1
-#upgrades the boot whenever there is a file different in the upgrade
-UPGRADEKERNELWHENDIFFERENT=1
-#upgrades the kernel whenever there is file size difference in the kernel
-UPGRADETHEBOOTWHENDIFFERENT=0
-#forces the upgrade of the user partition. 
-FORCEUPGRADETHEBOOT=0
-#wipes the u-boot section clean
-#Note we don't "automatically" wipe the u-boot.  This could be catestrophic unless you immedatly install a new-uboot
-#Note we have tremendous success with just overwritting the uboot. so just do that usually
-WIPETHEU_BOOT=0
-#upgrades the uboot sector with the u-boot.bin located on the boot partitition
-#strategy is copyover unless WIPETHEUBOOT is set. (Which happens to be exteremly dangerous)
-UPGRADETHEU_BOOTWHENNEWER=1
-#forces the upgrade of the uboot
-FORCEUPGRADETHEU_BOOT=0
-#Set the partition schema to be used.
-PARTITIONSCHEMA=2
-#if the partition schema does not match, the following flag will upgrade the partition schema, and will also 
-#set the Factory Upgrade to force and Upgrade partition to force automatically because those partitions are wiped 
-#during a re-schema
-REPARTITIONEMMC=1
+WIPETHEUSER_PARTITION=1
+#wipes the user database clean
+WIPETHEUSERDB=0
+#wipes the upgrade parititon (only use this in specail cases.  if we are upgrading the upgrade partition, it is automatically wiped)
+WIPETHEUPGRADE=0
+#wipes the factory parititon (only use this in specail cases.  if we are upgrading the factory partition, it is automatically wiped)
+WIPETHEFACTORY=0
+
+
+echo -e "UPGRADE THE FACTORY?\t\t\t $UPGRADETHEFACTORY"
+echo -e "FORCE UPGRADE FACTORY?\t\t\t $FORCEUPGRADETHEFACTORY"
+echo -e "UPGRADE THE UPGRADE?\t\t\t $UPGRADETHEUPGRADE"
+echo -e "FORCE UPGRADE THE UPGRADE?\t\t $FORCEUPGRADETHEUPGRADE"
+echo -e "WIPE THE USER PARTITION?\t\t $WIPETHEUSER_PARTITION"
+echo -e "WIPE THE USERDB?\t\t\t $WIPETHEUSERDB"
+echo -e "WIPE THE FACTORY?\t\t\t $WIPETHEFACTORY"
+echo -e "WIPE THE UPGRADE?\t\t\t $WIPETHEUPGRADE"
 
 
 
-if [[ $master_initscript_version -gt 2 ]]; then
-	UPGRADE
-else
-	echo "Installing new initscript"
-	cd /
-	mkdir /mnt/.boot/
-	mount /dev/mmcblk0p1 /mnt/.boot/
-	mount /dev/mmcblk0p5 /mnt/.overlay/user/
-	mkdir /tmpfs
-	mount -t tmpfs -o size=409600K,mode=700 tmpfs /tmpfs
-	echo -e "UPDATER:\texpanding /mnt/.overlay/user/slash/upgrades/upgrade.tar.gz to /tmpfs"
-	tar xzf /mnt/.overlay/user/slash/upgrades/upgrade.tar.gz -C /tmpfs
-	umount /dev/mmcblk0p5
-	cd /tmpfs
-	ls -al /mnt/.boot/
-	tar xJf boot.tar.xz -C /mnt/.boot/
-	if [[ $? -eq 0 ]]; then
-		success=1
-		echo -e "UPDATER:\tBoot push succeeded"
-	fi
-	cd /
-	ls -al /mnt/.boot/
-	echo -e "UPGRADE_SCRIPT:\tinstalling the new uboot"
-	dd if=/mnt/.boot/u-boot.bin of=/dev/mmcblk0 bs=1024 seek=8
-	umount /dev/mmcblk0p1
-	reboot -f
+
+color 0 0 0
+sleep 1
+color 1 0 0
+sleep 1
+color 0 1 0
+sleep 1
+color 0 0 1
+sleep 1
+color 0 1 1
+
+success=0
+
+
+if [[ "$WIPETHEFACTORY" -eq 1 ]]; then
+	#WIPES the FACTORY patititon by using mkfs
+	echo -e "UPDATER:\terasing the factory partition"
+	mkfs.ext4 -F -i 4096 -L "factory" $dev_factory
 fi
 
+if [[ "$FORCEUPGRADETHEFACTORY" -eq 0 ]]; then
+	mount $dev_factory $bbmp_factory
+	testfactorydiff=$(diff /mnt/.overlay/user/slash/upgrades/factoryversions.json /mnt/.overlay/factory/wigwag/etc/versions.json)
+	if [[ $? -ne 0 ]]; then
+		echo -e "UPDATER:\tdiff file does not exist: forcing upgrade factory"
+		testupgradediff="just do it"
+	fi
+	umount $dev_factory
+else
+	echo -e "UPDATER:\tforcing upgrade factory called"
+	testfactorydiff="just do it"
+	UPGRADETHEFACTORY=1
+fi
+
+if [[ "$UPGRADETHEFACTORY" -eq 1 ]]; then
+	if [ "$testfactorydiff" != "" ]; then
+		#WIPES the FACTORY patititon by using mkfs
+		echo -e "UPDATER:\terasing the factory partition"
+		mkfs.ext4 -F -i 4096 -L "factory" $dev_factory
+		#writes the factory.tar.xz to the factory partition (upgrades it)
+		mount $dev_factory $bbmp_factory
+		mkdir /tmpfs
+		mount -t tmpfs -o size=409600K,mode=700 tmpfs /tmpfs
+		echo -e "UPDATER:\texpanding $UGtarball to /tmpfs"
+		tar xzf $UGtarball -C /tmpfs
+		cd /tmpfs
+		echo -e "UPDATER:\tupgrading the factory parititon with factory.tar.xz to $bbmp_factory"
+		tar xJf factory.tar.xz -C $bbmp_factory/
+		if [[ $? -eq 0 ]]; then
+			success=1
+			echo -e "UPDATER:\tUpdate Factory partition succeeded"
+		fi
+		cd /
+		umount $dev_factory
+	else
+		echo -e "UPDATER:\tskipped updating the factory partition.  Versions match."
+		success=1
+	fi
+fi
+
+if [[ "$WIPETHEUPGRADE" -eq 1 ]]; then
+	umount $dev_upgrade
+	echo -e "UPDATER:\terasing the upgrade partition"
+	mkfs.ext4 -F -i 4096 -L "upgrade" $dev_upgrade
+fi
+
+if [[ "$FORCEUPGRADETHEUPGRADE" -eq 0 ]]; then
+	mount $dev_upgrade $bbmp_upgrade
+	testupgradediff=$(diff /mnt/.overlay/user/slash/upgrades/upgradeversions.json /mnt/.overlay/upgrade/wigwag/etc/versions.json)
+	if [[ $? -ne 0 ]]; then
+		echo -e "UPDATER:\tdiff file does not exist: forcing upgrade update"
+		testupgradediff="just do it"
+	fi
+	umount $dev_upgrade
+else
+	echo -e "UPDATER:\tforcing upgrade update called"
+	testupgradediff="just do it"
+	UPGRADETHEUPGRADE=1
+fi
+
+if [[ "$UPGRADETHEUPGRADE" -eq 1 ]]; then
+	if [ "$testupgradediff" != "" ]; then
+		umount $dev_upgrade
+		echo -e "UPDATER:\terasing the upgrade partition"
+		mkfs.ext4 -F -i 4096 -L "upgrade" $dev_upgrade
+		mount -rw $dev_upgrade $bbmp_upgrade
+		if [[ ! -d /tmpfs ]]; then
+			mkdir /tmpfs
+			mount -t tmpfs -o size=409600K,mode=700 tmpfs /tmpfs
+			echo -e "UPDATER:\texpanding $UGtarball to /tmpfs"
+			tar xzf $UGtarball -C /tmpfs	
+		fi
+		cd /tmpfs
+		echo -e "UPDATER:\tupgrading the upgrade parititon with upgrade.tar.xz to $bbmp_upgrade"
+		tar xJf upgrade.tar.xz -C $bbmp_upgrade/
+		if [[ $? -eq 0 ]]; then
+			success=1
+			echo -e "UPDATER:\tUpdate Upgrade partition succeeded"
+		fi
+		cd /
+		umount $dev_upgrade
+	else
+		echo -e "UPDATER:\tskipped updating the upgrade partition.  Versions match."
+		success=1
+	fi
+fi
+
+if [[ "$WIPETHEUSERDB" -eq 1 ]]; then
+	umount $dev_userdata
+	echo -e "UPDATER:\tformating userdata"
+	mkfs.ext4 -F -i 4096 -L "userdata" $dev_userdata
+	echo -e "UPDATER:\tchecking the filesystems $dev_userdata"
+fi
+
+umount $dev_user
+mount -o rw $dev_user $bbmp_user
+#WIPES the USER paritition by using rm's (you must do this last.  Remember /upgrades/ is on the user partition)
+if [[ "$WIPETHEUSER_PARTITION" -eq 1 ]]; then
+	echo -e "UPDATER:\terasing the user paritition data files up user"
+	rm -rf $bbmp_user_slash/*
+	rm -rf $bbmp_user_slash/.*
+	rm -rf $bbmp_user_slash/*.*
+fi
+echo "Success was found: $success"
+if [[ $success -eq 1 ]]; then
+    rm -rf $UGtarball
+    rm -rf $UGscript
+    rm -rf $UGdir/factoryversions.json
+    rm -rf $UGdir/upgradeversions.json
+	echo -e "UPDATER:\tremoved all upgrade files"
+	   #mkfs.ext4 -F -N 128000 -L "upgrade" $dev_upgrade
+fi
+
+
+echo -e "UPDATER:\te2fsck repair partitions $dev_factory $dev_upgrade $dev_userdata"
+e2fsck -y $dev_factory
+e2fsck -y $dev_upgrade
+e2fsck -y $dev_userdata
+
+reboot -f 
