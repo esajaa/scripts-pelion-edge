@@ -1,17 +1,15 @@
 # scripts-pelion-edge
-Build scripts and tools for the Pelion gateway firmware images
+Build scripts and tools for the Pelion Edge firmware images
 
 # creating an upgrade tarball
 
 The createUpgrade.sh script can be used to create a field upgrade tarball.
 
 ```
-> sudo createupGrade.sh <old-wic> <new-wic> <upgrade_certificate> <upgrade_key> [upgrade-tag]
+> sudo createupGrade.sh <old-wic> <new-wic> [upgrade-tag]
 ```
 old_wic_file        - base image for upgrade
 new_wic_file        - result image for upgrade
-upgrade_certificate - certificate packaged with upgrade used to verify signatures
-upgrade_key         - private key for upgrade_certificate used to generate signatures
 upgrade_tag         - optional text string prepended to output tarball filename
 
 
