@@ -250,6 +250,12 @@ main() {
     # Create tmp working space
     setupTemp
 
+    md5sum $oldwic | awk -v srch="$oldwic" -v repl="$newwic" '{ sub(srch,repl,$0); print $0 }' > ${TMPDIR}/chksum.txt
+    md5sum -c ${TMPDIR}/chksum.txt 2>/dev/null | grep -q "OK" && {
+        echo >&2 "Base image and result image are the same! Please make sure they are different."
+        return 4
+    }
+
     # If input wic files are gzipped, gunzip them otherwise copy them as is
     gzcat -f "$oldwic" > ${TMPDIR}/old_wic
     gzcat -f "$newwic" > ${TMPDIR}/new_wic
