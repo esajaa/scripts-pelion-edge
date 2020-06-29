@@ -1,5 +1,5 @@
-# scripts-pelion-os-edge
-Build scripts and tools for the pelion-os-edge firmware images
+# scripts-pelion-edge
+Build scripts and tools for the Pelion Edge firmware images
 
 # creating an upgrade tarball
 
@@ -8,6 +8,10 @@ The createUpgrade.sh script can be used to create a field upgrade tarball.
 ```
 > sudo createupGrade.sh <old-wic> <new-wic> [upgrade-tag]
 ```
+old_wic_file        - base image for upgrade
+new_wic_file        - result image for upgrade
+upgrade_tag         - optional text string prepended to output tarball filename
+
 
 Notes:
   1. createUpgrade must be run as root as it calls functions such as mount and rsync which require root access
@@ -17,7 +21,5 @@ Notes:
 
 # starting the upgrade process manually
 
-Unpack the field upgrade tarball (usually called `field-upgradeupdate.tar.gz`) into the user partition, under `/slash/upgrades`, then reboot the device.
-The upgrade process will start upon detecting the required files.
-
-Note that by default, the user partition is erased during the upgrade. This includes saved settings such as the root password. To disable this behavior, please change the value of `WIPETHEUSER_PARTITION` to `0` in `upgrade.sh` (contained in the field upgrade tarball).
+Unpack the field upgrade tarball (usually called `field-upgradeupdate.tar.gz`) into the user partition, under `/upgrades`. 
+Reboot the device after the unpacking is completed. The upgrade process will start upon detecting the required files.
