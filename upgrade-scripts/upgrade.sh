@@ -28,7 +28,7 @@ UPGRADETHEUPGRADE=1
 #upgrades the upgrade regarless of what is currently on the upgrade parition
 FORCEUPGRADETHEUPGRADE=0
 #wipes the user partition clean
-WIPETHEUSER_PARTITION=1
+WIPETHEUSER_PARTITION=0
 #wipes the user database clean
 WIPETHEUSERDB=0
 #wipes the upgrade parititon (only use this in specail cases.  if we are upgrading the upgrade partition, it is automatically wiped)
@@ -173,18 +173,18 @@ if [[ "$WIPETHEUSER_PARTITION" -eq 1 ]]; then
 fi
 echo "Success was found: $success"
 if [[ $success -eq 1 ]]; then
-    rm -rf $UGtarball
-    rm -rf $UGscript
-    rm -rf $UGdir/factoryversions.json
-    rm -rf $UGdir/upgradeversions.json
+	rm -rf $UGtarball
+	rm -rf $UGscript
+	rm -rf $UGdir/factoryversions.json
+	rm -rf $UGdir/upgradeversions.json
 	echo -e "UPDATER:\tremoved all upgrade files"
 	   #mkfs.ext4 -F -N 128000 -L "upgrade" $dev_upgrade
-fi
+	fi
 
 
-echo -e "UPDATER:\te2fsck repair partitions $dev_factory $dev_upgrade $dev_userdata"
-e2fsck -y $dev_factory
-e2fsck -y $dev_upgrade
-e2fsck -y $dev_userdata
+	echo -e "UPDATER:\te2fsck repair partitions $dev_factory $dev_upgrade $dev_userdata"
+	e2fsck -y $dev_factory
+	e2fsck -y $dev_upgrade
+	e2fsck -y $dev_userdata
 
-reboot -f 
+	reboot -f 
