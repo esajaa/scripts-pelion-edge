@@ -11,23 +11,16 @@ Scripts are provided for both of these, and instructions for running directly or
 
 # Creating an upgrade tarball between wic images
 
-The createOSTreeUpdate.sh script can be used to create a field upgrade tarball.
+The createOSTreeUpgrade.sh script can be used to create a field upgrade tarball.
 
 ```
-> ./createOSTreeUpdate.sh old-wic-file new-wic-file [upgrade-tag]
-```
-
-If using the Docker container use:
-
-```
-docker build --no-cache -f Docker/Dockerfile --label ostree-delta  --tag ${USER}/ostree-delta:latest .
-docker run --rm -v old_wic_file:/old_wic.wic -v new_wic_file:new_wic.wic -v /dev:/dev -v ${PWD}:/ws -w /ws --privileged ${USER}/ostree-delta:latest ./createOSTreeUpgrade.sh /old_wic.wic /new_wic.wic [upgrade-tag]
+> ./createOSTreeUpgrade.sh <old-wic> <new-wic> [upgrade-tag]
 ```
 
 Notes:
   1. The output is a gzipped tarball.
-  1. old-wic-file and new-wic-file are the .wic images produced by Yocto build
-  1. output is either data.tar.gz or upgrade-tag-data.tar.gz
+  1. old-wic and new-wic are the *.wic images produced by Yocto build
+  1. output is < upgrade-tag ->data.tar.gz
   1. createOSTreeUpdate mounts the partitions from the wic files on loopback devices. 2 free loopback devices are required.
 
 # Creating an upgrade tarball between OSTree repositories
@@ -41,8 +34,7 @@ The ostree-delta.py script can be used to create a field upgrade tarball.
 If using the Docker container use:
 
 ```
-docker build --no-cache -f Docker/Dockerfile --label ostree-delta  --tag ${USER}/ostree-delta:latest .
-docker run --rm -v repo:/base_repo -v update_repo:/update_repo -v ${PWD}:/ws -w /ws ${USER}/ostree-delta:latest ./ostree-delta.py --repo=/base_repo --update_repo /upgrade_repo --output output-dir
+> ./ostree-delta-docker.sh --repo repo --output output-dir [--update_repo repo] -- [--to_sha sha] [--from_sha sha]  [--commit message] [--generate_bin]
 ```
 
    Where:
@@ -57,5 +49,4 @@ docker run --rm -v repo:/base_repo -v update_repo:/update_repo -v ${PWD}:/ws -w 
 
 Notes:
   1. The output is a gzipped tarball.
-  1. output is named output-dir/data.tar-gz. If the `--generate_bin` option is provided then the output is renamed to data.bin
-
+  1. output is named data.tar-gz. If the `--generate_bin` option is provided then the output is renamed to data.bin
