@@ -34,7 +34,7 @@ The ostree-delta.py script can be used to create a field upgrade tarball.
 If using the Docker container use:
 
 ```
-> ./ostree-delta-docker.sh --repo=repo --output=output-dir [--update_repo repo] -- [--to_sha sha] [--from_sha sha]  [--commit message] [--generate_bin]
+> ./ostree-delta-docker.sh --repo repo --output output-dir [--update_repo repo] -- [--to_sha sha] [--from_sha sha]  [--commit message] [--generate_bin]
 ```
 
    Where:
