@@ -68,4 +68,5 @@ export HOME=/home/"$username"
 
 sed -i 's/%sudo  ALL=(ALL:ALL) ALL/%sudo ALL=(ALL:ALL) NOPASSWD:ALL/' /etc/sudoers
 
-sudo -E -u "$username" "$@"
+"$@"
+
