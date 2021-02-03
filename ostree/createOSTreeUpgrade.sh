@@ -154,24 +154,22 @@ cleanup() {
 # Takes two input wic files and produces a tarball of their difference that can
 # be used in the field upgrade process
 # Params:
-#     1 - oldwic: .wic file of the base or factory build to be upgraded
-#     2 - newwic: .wic file of the new or upgrade build
-#     3 - tag:    optional text tag to be prepended to the output tarball
+#     1 - oldwic:      .wic file of the base or factory build to be upgraded
+#     2 - newwic:      .wic file of the new or upgrade build
+#     3 - outputfile:  output tarball filename
 # Output:
 #     <tag>-field-upgradeupdate.tar.gz
 main() {
     local oldwic="$1"
     local newwic="$2"
-    local tag
+    local outputfile="$3"
     local success=1
 
-    [[ -z "$3" ]] && tag="data.tar.gz" || tag="${3}"-data.tar.gz
-
-    [ -f "${oldwic}" ] && [ -f "${newwic}" ] || {
+    [ -f "${oldwic}" ] && [ -f "${newwic}" ] && [ -n "${outputfile}" ] || {
         echo >&2 "Usage: sudo createUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> [upgrade_tag]"
         echo >&2 "    old_wic_file        - base image for upgrade"
         echo >&2 "    new_wic_file        - result image for upgrade"
-        echo >&2 "    upgrade_tag         - optional text string prepended to output tarball filename"
+        echo >&2 "    output_file         - output tarball filename"
         return 1
     }
 
@@ -204,7 +202,7 @@ main() {
             break
         }
 
-    mv ${TMPDIR}/delta/data.tar.gz ${tag}
+    mv ${TMPDIR}/delta/data.tar.gz ${outputfile}
 
     # Cleanup the temp working space
     cleanup
