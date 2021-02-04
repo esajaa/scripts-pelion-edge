@@ -26,6 +26,7 @@ Notes:
   1. old-wic-file and new-wic-file are the absolute paths to the .wic images produced by Yocto build
   1. The output-file is a gzipped tarball.
   1. createOSTreeUpgrade mounts the partitions from the wic files on loopback devices. 2 free loopback devices are required.
+  1. The ```--privileged``` flag is used in the ```docker run``` command to allow mounting of the loopback devices within the container.
   1. If you have built with Docker the output files will be owned by root.  Run ```sudo chown --changes --recursive $USER:$USER .``` to fix it.
 
 # Creating an upgrade tarball between OSTree repositories
