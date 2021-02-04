@@ -19,11 +19,11 @@ If using the Docker container use:
 
 ```
 docker build --no-cache -f Docker/Dockerfile --label ostree-delta  --tag ${USER}/ostree-delta:latest .
-docker run --rm -v old-wic-file:/old_wic.wic -v new-wic-file:/new_wic.wic -v /dev:/dev -v ${PWD}:/ws -w /ws --privileged ${USER}/ostree-delta:latest ./createOSTreeUpgrade.sh /old_wic.wic /new_wic.wic output-file
+docker run --rm -v old-wic-file:/old_wic -v new-wic-file:/new_wic -v /dev:/dev -v ${PWD}:/ws -w /ws --privileged ${USER}/ostree-delta:latest ./createOSTreeUpgrade.sh /old_wic /new_wic output-file
 ```
 
 Notes:
-  1. old-wic-file and new-wic-file are the absolute paths to the .wic images produced by Yocto build
+  1. old-wic-file and new-wic-file are the absolute paths to the .wic images produced by Yocto build. Either the .wic or the .wic.gz file can be used.
   1. The output-file is a gzipped tarball.
   1. createOSTreeUpgrade mounts the partitions from the wic files on loopback devices. 2 free loopback devices are required.
   1. The ```--privileged``` flag is used in the ```docker run``` command to allow mounting of the loopback devices within the container.
