@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: add settings section to group all the hardcoded paths and values
+
 # Output a message if verbose mode is on
 blab() {
     [ "$VERBOSE" = 1 ] && echo "$@"
@@ -89,7 +91,7 @@ mount_wic_partition() {
 
     mkdir -p "${mount_point}"
     blab Mounting wic partition "$partition_number" of "$wic_file" to "$mount_point"
-    sudo mount -o loop,rw,offset=$((512*${start_sector})),sizelimit=$((512*${sector_count})) -t ${partition_type} "${wic_file}" "${mount_point}"
+    mount -o loop,rw,offset=$((512*${start_sector})),sizelimit=$((512*${sector_count})) -t ${partition_type} "${wic_file}" "${mount_point}"
 }
 
 # Convenience/symmetry function
@@ -97,37 +99,7 @@ mount_wic_partition() {
 #    1 - mount point (or /dev name)
 umount_wic_partition() {
     blab Umounting "$1"
-    sudo umount "$1"
-}
-
-# Generate diff and create tarball (and its md5) between one partition of two given images
-# Params:
-#    1 - old image file name
-#    2 - new image file name
-#    3 - partition number
-#    4 - [optional] temporary directory for packing/unpacking files [default: TMPDIR, fallback current directory]
-# Assumptions: workdir/pack exists and is used for the output tarball+md5
-ostree_diff_partition() {
-    local wic_old="$1"
-    local wic_new="$2"
-    local partition="$3"
-    local workdir="${4:-${TMPDIR:-$(pwd)}}"
-
-    blab "===> Diffing partition $partition"
-
-    mount_wic_partition "$wic_old" "$partition" "$workdir/old" || return 1
-    mount_wic_partition "$wic_new" "$partition" "$workdir/new" || {
-        umount_wic_partition "$workdir/old"
-        return 2
-    }
-
-    blab Running OSTree difftool
-    sudo ./ostree-delta.py --repo "$workdir/old/ostree/repo" --output $workdir/delta --update_repo "$workdir/new/ostree/repo"
-
-    umount_wic_partition "$workdir/old"
-    umount_wic_partition "$workdir/new"
-
-    rm -rf "$workdir/old" "$workdir/new" "$workdir/diff"
+    umount "$1"
 }
 
 # Setup temporary working space
@@ -149,58 +121,50 @@ cleanup() {
 }
 
 # Main function
-# Takes two input wic files and produces a tarball of their difference that can
-# be used in the field upgrade process
+# Takes a wic files and extracts the ostree repo
 # Params:
-#     1 - oldwic:      .wic file of the base or factory build to be upgraded
-#     2 - newwic:      .wic file of the new or upgrade build
-#     3 - outputfile:  filename of the output tarball
-# Output:
-#     <tag>-field-upgradeupdate.tar.gz
+#     1 - wic:         .wic file
+#     2 - outputfile:  name of extracted repo folder
 main() {
-    local oldwic="$1"
-    local newwic="$2"
-    local outputfile="$3"
+    local wic="$1"
+    local output="$2"
     local success=1
 
-    [ -f "${oldwic}" ] && [ -f "${newwic}" ] && [ -n "${outputfile}" ] || {
-        echo >&2 "Usage: sudo createOSTreeUpgrade.sh [--verbose] <old_wic_file> <new_wic_file> [upgrade_tag]"
-        echo >&2 "    old_wic_file        - base image for upgrade"
-        echo >&2 "    new_wic_file        - image to upgrade to"
-        echo >&2 "    output_file         - filename of the output tarball"
+    [ -f "${wic}" ] && [ -n "${output}" ] || {
+        echo >&2 "Usage: sudo extractOSTreeRepo.sh [--verbose] <wic_file> <output>"
+        echo >&2 "    wic_file        - .wic file containing the repo to extract"
+        echo >&2 "    output          - name of extracted repo folder"
         return 1
+    }
+
+    # Ensure we are running as root so we can mount the partition
+    [ $(id -u) -ne 0 ] && {
+        echo >&2 "Please run as root"
+        return 3
     }
 
     # Make sure we have all the binaries we need; gzcat can be substituted
     type gzcat >/dev/null 2>&1 || gzcat() { gzip -c -d -f "$@"; }
     require_binaries gzip gzcat xz tar openssl md5sum grep rsync mount umount fdisk sfdisk || return 2
 
-    # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
-    # Ensure we are running as root
-    [ $(id -u) -ne 0 ] && {
-        echo >&2 "Please run as root"
-        return 3
-    }
-
     # Create tmp working space
     setupTemp
 
-    md5sum $oldwic | awk -v srch="$oldwic" -v repl="$newwic" '{ sub(srch,repl,$0); print $0 }' > ${TMPDIR}/chksum.txt
-    md5sum -c ${TMPDIR}/chksum.txt 2>/dev/null | grep -q "OK" && {
-        echo >&2 "Base image and result image are the same! Please make sure they are different."
-        return 4
+    # If input wic files are gzipped, gunzip them otherwise copy them as is
+    gzcat -f "$wic" > ${TMPDIR}/wicfile
+
+    mount_wic_partition "${TMPDIR}/wicfile" 2 "${TMPDIR}/wic" || {
+        rm -rf "${TMPDIR}/wic"
+        # Cleanup the temp working space
+        cleanup
+        return 2
     }
 
-    # If input wic files are gzipped, gunzip them otherwise copy them as is
-    gzcat -f "$oldwic" > ${TMPDIR}/old_wic
-    gzcat -f "$newwic" > ${TMPDIR}/new_wic
+    cp -R "${TMPDIR}/wic/ostree/repo"  $output
 
-    ostree_diff_partition ${TMPDIR}/old_wic ${TMPDIR}/new_wic 2 || {
-            success=0
-            break
-        }
+    umount_wic_partition "${TMPDIR}/wic"
 
-    mv ${TMPDIR}/delta/data.tar.gz ${outputfile}
+    rm -rf "${TMPDIR}/wic"
 
     # Cleanup the temp working space
     cleanup
