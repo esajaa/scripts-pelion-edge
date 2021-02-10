@@ -23,7 +23,7 @@ Subsequent updates should be created between the **first image** and the new upd
 The createOSTreeUpgrade.sh script can be used to create a field upgrade tarball.
 
 ```
-> ./createOSTreeUpgrade.sh old-wic-file new-wic-file delta.tar.gz
+> sudo ./createOSTreeUpgrade.sh old-wic-file new-wic-file delta.tar.gz
 ```
 
 If using the Docker container use:
