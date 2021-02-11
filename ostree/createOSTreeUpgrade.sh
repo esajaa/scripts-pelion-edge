@@ -173,7 +173,7 @@ main() {
 
     # Make sure we have all the binaries we need; gzcat can be substituted
     type gzcat >/dev/null 2>&1 || gzcat() { gzip -c -d -f "$@"; }
-    require_binaries gzip gzcat xz tar openssl md5sum grep rsync mount umount fdisk sfdisk || return 2
+    require_binaries gzip gzcat xz tar openssl md5sum grep rsync mount umount fdisk sfdisk ostree || return 2
 
     # TODO: Right now, commands run as sudo (e.g. rsync) create files with root as owner, thus requiring pretty much the entire remaining script to be run as root as well. Fix it.
     # Ensure we are running as root
