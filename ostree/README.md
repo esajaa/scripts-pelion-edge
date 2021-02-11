@@ -7,29 +7,40 @@ There are two ways of creating an update image:
 
 These artifacts are produced during the Yocto build.
 
-# Creating an upgrade tarball between wic images
+# Creating updates
+
+An OStree update is essentially a delta between a known, deployed, version and the update version. 
+It is essential that either the **first image** or **first repository** is preserved for future upgrades. 
+
+## Creating the first update
+The first update will be between the **first image** and the update image. 
+## Creating subsequent updates
+Subsequent updates should be created between the **first image** and the new update image. We can only be sure that the base image is present in a device. We cannot rely on any previous update deltas being applied to a device.
+
+
+# Creating an update tarball between wic images
 
 The createOSTreeUpgrade.sh script can be used to create a field upgrade tarball.
 
 ```
-> ./createOSTreeUpgrade.sh old-wic-file new-wic-file delta.tar.gz
+> sudo ./createOSTreeUpgrade.sh first-wic-file new-wic-file delta.tar.gz
 ```
 
 If using the Docker container use:
 
 ```
 docker build --no-cache -f Docker/Dockerfile --label ostree-delta  --tag ${USER}/ostree-delta:latest .
-docker run --rm -v old-wic-file:/old_wic -v new-wic-file:/new_wic -v /dev:/dev -v ${PWD}:/ws -w /ws --privileged ${USER}/ostree-delta:latest ./createOSTreeUpgrade.sh /old_wic /new_wic delta.tar.gz
+docker run --rm -v first-wic-file:/first_wic -v new-wic-file:/new_wic -v /dev:/dev -v ${PWD}:/ws -w /ws --privileged ${USER}/ostree-delta:latest ./createOSTreeUpgrade.sh /first_wic /new_wic delta.tar.gz
 ```
 
 Notes:
-  1. **old-wic-file** and **new-wic-file** are the absolute paths to the .wic images produced by Yocto build. Either the .wic or the .wic.gz file can be used.
+  1. **first-wic-file** and **new-wic-file** are the absolute paths to the .wic images produced by Yocto build. Either the .wic or the .wic.gz file can be used.
   1. The output is stored in the file **delta.tar.gz** in the current folder
   1. createOSTreeUpgrade mounts the partitions from the wic files on loopback devices. 2 free loopback devices are required.
   1. The ```--privileged``` flag is used in the ```docker run``` command to allow mounting of the loopback devices within the container.
   1. If you have built with Docker the output files will be owned by root.  Run ```sudo chown --changes --recursive $USER:$USER .``` to fix it.
 
-# Creating an upgrade tarball between OSTree repositories
+# Creating an update tarball between OSTree repositories
 
 The ostree-delta.py script can be used to create a field upgrade tarball.
 
@@ -55,7 +66,7 @@ If using the Docker container use:
 
 ```
 docker build --no-cache -f Docker/Dockerfile --label ostree-delta  --tag ${USER}/ostree-delta:latest .
-docker run --rm -v base-repo:/base_repo -v update-repo:/update_repo -v ${PWD}:/ws -w /ws ${USER}/ostree-delta:latest ./ostree-delta.py --repo=/base_repo --update_repo /upgrade_repo --output output-dir
+docker run --rm -v base-repo:/base_repo -v update-repo:/update_repo -v ${PWD}:/ws -w /ws ${USER}/ostree-delta:latest ./ostree-delta.py --repo=/base_repo --update_repo /update_repo --output output-dir
 ```
 
    Where:
@@ -69,3 +80,16 @@ Notes:
   1. output is named data.tar-gz.
   1. The output files will be owned by root.  Run ```sudo chown --changes --recursive $USER:$USER .``` to fix it.
 
+# Extracting the ostree repo from a wic image
+
+The extractOSTreeRepo.sh script can be used to extract the OSTree repository from a wic file.
+
+```
+> sudo ./extractOSTreeRepo.sh wic-file repo_name 
+```
+
+Notes:
+  1. **wic-file** is the absolute path to the .wic image produced by Yocto build. Either the .wic or the .wic.gz file can be used.
+  1. The output is stored in the folder **repo_name** in the current folder
+  1. extractOSTreeRepo mounts the partition from the wic file on a loopback device. 1 free loopback device is required.
+  1. The output folder will be owned by root.  Run ```sudo chown --changes --recursive $USER:$USER .``` to fix it.
