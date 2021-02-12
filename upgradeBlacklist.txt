@@ -2,3 +2,4 @@
 # format: full path, no wildcards, one file per line
 /etc/shadow
 /lost+found
+/var/run
