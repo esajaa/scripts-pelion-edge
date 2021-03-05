@@ -100,7 +100,11 @@ def _get_data_from_repo(repo, machine, data):
     for line in output:
 
         if line.startswith(data):
-            values.append(line.split()[1])
+            #Date variable requires specific parsing since it contains spaces and colons
+            if data == "Date":
+                values.append(line.split(":", 1)[1].strip())
+            else:
+                values.append(line.split()[1])
     if len(values) > 0:
         return values
     else:
@@ -113,9 +117,12 @@ def _get_shas_from_repo(repo, machine):
 
 
 def _get_version_from_repo(repo, machine):
-    # Get the sha from the repo
+    # Get the version from the repo
     return _get_data_from_repo(repo, machine, "Version")
 
+def _get_date_from_repo(repo, machine):
+    # Get the date from the repo
+    return _get_data_from_repo(repo, machine, "Date")
 
 def _generate_metadata(outputpath, from_sha, to_sha):
     # Save the from and to shas into a file. They will be needed on the device at the deploy stage.
@@ -176,6 +183,8 @@ def _generate_static_delta_between_repos(
 
     print(update_sha)
 
+    date = _get_date_from_repo(update_repo, machine)
+
     versions = _get_version_from_repo(update_repo, machine)
 
     # Get the sha from the deployed repo
@@ -212,6 +221,7 @@ def _generate_static_delta_between_repos(
         '"{}"'.format(commit),
         "--add-metadata-string=version={}".format(versions[0]),
         "--tree=ref={}".format(update_sha),
+        "--timestamp={}".format(date[0]),
     ]
     commit_sha = _execute_command(command).rstrip()
     print(commit_sha)
